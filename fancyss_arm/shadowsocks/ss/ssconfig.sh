@@ -1345,125 +1345,164 @@ creat_v2ray_json(){
 	elif [ "$ss_basic_v2ray_use_json" == "1" ];then
 		echo_date 使用自定义的v2ray json配置文件...
 		echo "$ss_basic_v2ray_json" | base64_decode > "$V2RAY_CONFIG_FILE_TMP"
-
-		OUTBOUND=`cat "$V2RAY_CONFIG_FILE_TMP" | jq .outbound`
-		#JSON_INFO=`cat "$V2RAY_CONFIG_FILE_TMP" | jq 'del (.inbound) | del (.inboundDetour) | del (.log)'`
-		#INBOUND_TAG=`cat "$V2RAY_CONFIG_FILE_TMP" | jq '.inbound.tag'||""
-		#INBOUND_DETOUR_TAG=`cat "$V2RAY_CONFIG_FILE_TMP" | jq '.inbound.tag'||""
-		
-		local TEMPLATE="{
-						\"log\": {
-							\"access\": \"/dev/null\",
-							\"error\": \"/tmp/v2ray_log.log\",
-							\"loglevel\": \"error\"
-						},
-						\"inbound\": {
-							\"port\": 23456,
-							\"listen\": \"0.0.0.0\",
-							\"protocol\": \"socks\",
-							\"settings\": {
-								\"auth\": \"noauth\",
-								\"udp\": true,
-								\"ip\": \"127.0.0.1\",
-								\"clients\": null
+		CUSTOMJSON=`cat "$V2RAY_CONFIG_FILE_TMP" | jq .customsetting`
+		# 使用用户自定义配置文件，并使用新配置文件格式
+		if [ -n "$CUSTOMJSON" ];then
+			OUTBOUNDS=`cat "$V2RAY_CONFIG_FILE_TMP" | jq .outbounds`
+			local TEMPLATE="{
+							\"log\": {
+								\"access\": \"/dev/null\",
+								\"error\": \"/tmp/v2ray_log.log\",
+								\"loglevel\": \"error\"
 							},
-							\"streamSettings\": null
-						},
-						\"inboundDetour\": [
-							{
-								\"listen\": \"0.0.0.0\",
-								\"port\": 3333,
-								\"protocol\": \"dokodemo-door\",
-								\"settings\": {
-									\"network\": \"tcp,udp\",
-									\"followRedirect\": true
+							\"inbounds\": [
+								{
+									\"port\": 23456,
+									\"listen\": \"0.0.0.0\",
+									\"protocol\": \"socks\",
+									\"settings\": {
+										\"auth\": \"noauth\",
+										\"udp\": true,
+										\"ip\": \"127.0.0.1\",
+										\"clients\": null
+									},
+									\"streamSettings\": null
+								},
+								{
+									\"listen\": \"0.0.0.0\",
+									\"port\": 3333,
+									\"protocol\": \"dokodemo-door\",
+									\"settings\": {
+										\"network\": \"tcp,udp\",
+										\"followRedirect\": true
+									}
 								}
-							}
-						]
-						}"
-		#local TEMPLATE=`cat /koolshare/ss/rules/v2ray_template.json`
-		echo_date 解析V2Ray配置文件...
-		echo $TEMPLATE | jq --argjson args "$OUTBOUND" '. + {outbound: $args}' > "$V2RAY_CONFIG_FILE"
-		#echo $TEMPLATE | jq --argjson args "$JSON_INFO" '. + $args' > "$V2RAY_CONFIG_FILE"
-		
-		echo_date V2Ray配置文件写入成功到"$V2RAY_CONFIG_FILE"
-		#close_in_five
-		
-		# 检测用户json的服务器ip地址
-		v2ray_protocal=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.protocol`
-		case $v2ray_protocal in
-		vmess)
-			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.vnext[0].address`
-			;;
-		socks)
-			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.servers[0].address`
-			;;
-		shadowsocks)
-			v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.servers[0].address`
-			;;
-		*)
-			v2ray_server=""
-			;;
-		esac
+							]
+							}"
+			echo_date 解析V2Ray配置文件...
+			echo $TEMPLATE | jq --argjson args "$OUTBOUNDS" '. + {outbounds: $args}' > "$V2RAY_CONFIG_FILE"
+			echo_date V2Ray配置文件写入成功到"$V2RAY_CONFIG_FILE"
+		else
+			# 使用自定义的v2ray json配置文件中的outbound
+			OUTBOUND=`cat "$V2RAY_CONFIG_FILE_TMP" | jq .outbound`
+			#JSON_INFO=`cat "$V2RAY_CONFIG_FILE_TMP" | jq 'del (.inbound) | del (.inboundDetour) | del (.log)'`
+			#INBOUND_TAG=`cat "$V2RAY_CONFIG_FILE_TMP" | jq '.inbound.tag'||""
+			#INBOUND_DETOUR_TAG=`cat "$V2RAY_CONFIG_FILE_TMP" | jq '.inbound.tag'||""
+			
+			local TEMPLATE="{
+							\"log\": {
+								\"access\": \"/dev/null\",
+								\"error\": \"/tmp/v2ray_log.log\",
+								\"loglevel\": \"error\"
+							},
+							\"inbound\": {
+								\"port\": 23456,
+								\"listen\": \"0.0.0.0\",
+								\"protocol\": \"socks\",
+								\"settings\": {
+									\"auth\": \"noauth\",
+									\"udp\": true,
+									\"ip\": \"127.0.0.1\",
+									\"clients\": null
+								},
+								\"streamSettings\": null
+							},
+							\"inboundDetour\": [
+								{
+									\"listen\": \"0.0.0.0\",
+									\"port\": 3333,
+									\"protocol\": \"dokodemo-door\",
+									\"settings\": {
+										\"network\": \"tcp,udp\",
+										\"followRedirect\": true
+									}
+								}
+							]
+							}"
+			#local TEMPLATE=`cat /koolshare/ss/rules/v2ray_template.json`
+			echo_date 解析V2Ray配置文件...
+			echo $TEMPLATE | jq --argjson args "$OUTBOUND" '. + {outbound: $args}' > "$V2RAY_CONFIG_FILE"
+			#echo $TEMPLATE | jq --argjson args "$JSON_INFO" '. + $args' > "$V2RAY_CONFIG_FILE"
+			
+			echo_date V2Ray配置文件写入成功到"$V2RAY_CONFIG_FILE"
+			#close_in_five
+			
+			# 检测用户json的服务器ip地址
+			v2ray_protocal=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.protocol`
+			case $v2ray_protocal in
+			vmess)
+				v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.vnext[0].address`
+				;;
+			socks)
+				v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.servers[0].address`
+				;;
+			shadowsocks)
+				v2ray_server=`cat "$V2RAY_CONFIG_FILE" | jq -r .outbound.settings.servers[0].address`
+				;;
+			*)
+				v2ray_server=""
+				;;
+			esac
 
-		if [ -n "$v2ray_server" -a "$v2ray_server" != "null" ];then
-			IFIP_VS=`echo $v2ray_server|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
-			if [ -n "$IFIP_VS" ];then
-				ss_basic_server_ip="$v2ray_server"
-				echo_date "检测到你的json配置的v2ray服务器是：$v2ray_server"
-			else
-				echo_date "检测到你的json配置的v2ray服务器：$v2ray_server不是ip格式！"
-				echo_date "为了确保v2ray的正常工作，建议配置ip格式的v2ray服务器地址！"
-				echo_date "尝试解析v2ray服务器的ip地址，DNS：$(get_server_resolver)"
-				# 服务器地址强制由114解析，以免插件还未开始工作而导致解析失败
-				echo "server=/$v2ray_server/$(get_server_resolver)#53" > /jffs/configs/dnsmasq.d/ss_server.conf
-				v2ray_server_ip=`nslookup "$v2ray_server" $(get_server_resolver) | sed '1,4d' | awk '{print $3}' | grep -v :|awk 'NR==1{print}'`
-				if [ "$?" == "0" ]; then
-					v2ray_server_ip=`echo $v2ray_server_ip|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+			if [ -n "$v2ray_server" -a "$v2ray_server" != "null" ];then
+				IFIP_VS=`echo $v2ray_server|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+				if [ -n "$IFIP_VS" ];then
+					ss_basic_server_ip="$v2ray_server"
+					echo_date "检测到你的json配置的v2ray服务器是：$v2ray_server"
 				else
-					echo_date v2ray服务器域名解析失败！
-					echo_date 尝试用resolveip方式解析，DNS：系统
-					v2ray_server_ip=`resolveip -4 -t 2 $ss_basic_server|awk 'NR==1{print}'`
-					if [ "$?" == "0" ];then
+					echo_date "检测到你的json配置的v2ray服务器：$v2ray_server不是ip格式！"
+					echo_date "为了确保v2ray的正常工作，建议配置ip格式的v2ray服务器地址！"
+					echo_date "尝试解析v2ray服务器的ip地址，DNS：$(get_server_resolver)"
+					# 服务器地址强制由114解析，以免插件还未开始工作而导致解析失败
+					echo "server=/$v2ray_server/$(get_server_resolver)#53" > /jffs/configs/dnsmasq.d/ss_server.conf
+					v2ray_server_ip=`nslookup "$v2ray_server" $(get_server_resolver) | sed '1,4d' | awk '{print $3}' | grep -v :|awk 'NR==1{print}'`
+					if [ "$?" == "0" ]; then
 						v2ray_server_ip=`echo $v2ray_server_ip|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+					else
+						echo_date v2ray服务器域名解析失败！
+						echo_date 尝试用resolveip方式解析，DNS：系统
+						v2ray_server_ip=`resolveip -4 -t 2 $ss_basic_server|awk 'NR==1{print}'`
+						if [ "$?" == "0" ];then
+							v2ray_server_ip=`echo $v2ray_server_ip|grep -E "([0-9]{1,3}[\.]){3}[0-9]{1,3}|:"`
+						fi
+					fi
+
+					if [ -n "$v2ray_server_ip" ];then
+						echo_date "v2ray服务器的ip地址解析成功：$v2ray_server_ip"
+						# 解析并记录一次ip，方便插件触发重启设定工作
+						echo "address=/$v2ray_server/$v2ray_server_ip" > /tmp/ss_host.conf
+						# 去掉此功能，以免ip发生变更导致问题，或者影响域名对应的其它二级域名
+						#ln -sf /tmp/ss_host.conf /jffs/configs/dnsmasq.d/ss_host.conf
+						ss_basic_server_ip="$v2ray_server_ip"
+					else
+						echo_date "v2ray服务器的ip地址解析失败!插件将继续运行，域名解析将由v2ray自己进行！"
+						echo_date "请自行将v2ray服务器的ip地址填入IP/CIDR白名单中!"
+						echo_date "为了确保v2ray的正常工作，建议配置ip格式的v2ray服务器地址！"
+						#close_in_five
 					fi
 				fi
-
-				if [ -n "$v2ray_server_ip" ];then
-					echo_date "v2ray服务器的ip地址解析成功：$v2ray_server_ip"
-					# 解析并记录一次ip，方便插件触发重启设定工作
-					echo "address=/$v2ray_server/$v2ray_server_ip" > /tmp/ss_host.conf
-					# 去掉此功能，以免ip发生变更导致问题，或者影响域名对应的其它二级域名
-					#ln -sf /tmp/ss_host.conf /jffs/configs/dnsmasq.d/ss_host.conf
-					ss_basic_server_ip="$v2ray_server_ip"
-				else
-					echo_date "v2ray服务器的ip地址解析失败!插件将继续运行，域名解析将由v2ray自己进行！"
-					echo_date "请自行将v2ray服务器的ip地址填入IP/CIDR白名单中!"
-					echo_date "为了确保v2ray的正常工作，建议配置ip格式的v2ray服务器地址！"
-					#close_in_five
-				fi
+			else
+				echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+				echo_date "+       没有检测到你的v2ray服务器地址，如果你确定你的配置是正确的        +"
+				echo_date "+   请自行将v2ray服务器的ip地址填入【IP/CIDR】黑名单中，以确保正常使用   +"
+				echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
 			fi
-		else
-			echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-			echo_date "+       没有检测到你的v2ray服务器地址，如果你确定你的配置是正确的        +"
-			echo_date "+   请自行将v2ray服务器的ip地址填入【IP/CIDR】黑名单中，以确保正常使用   +"
-			echo_date "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
-		fi
 
-		if [ "$ss_foreign_dns" == "7" ];then
-			echo_date 配置v2ray dns，用于dns解析...
-			local V2DNS="{
-							\"protocol\": \"dokodemo-door\", 
-							\"port\": 7913,
-							\"settings\": {
-								\"address\": \"8.8.8.8\",
-								\"port\": 53,
-								\"network\": \"udp\",
-								\"timeout\": 0,
-								\"followRedirect\": false
-							}
-						}"
-			cat /koolshare/ss/v2ray.json | jq --argjson args "$V2DNS" '. + {inbound: $args}' > /tmp/v2ray_dns.json && mv /tmp/v2ray_dns.json /koolshare/ss/v2ray.json
+			if [ "$ss_foreign_dns" == "7" ];then
+				echo_date 配置v2ray dns，用于dns解析...
+				local V2DNS="{
+								\"protocol\": \"dokodemo-door\", 
+								\"port\": 7913,
+								\"settings\": {
+									\"address\": \"8.8.8.8\",
+									\"port\": 53,
+									\"network\": \"udp\",
+									\"timeout\": 0,
+									\"followRedirect\": false
+								}
+							}"
+				cat /koolshare/ss/v2ray.json | jq --argjson args "$V2DNS" '. + {inbound: $args}' > /tmp/v2ray_dns.json && mv /tmp/v2ray_dns.json /koolshare/ss/v2ray.json
+			fi
 		fi
 	fi
 
